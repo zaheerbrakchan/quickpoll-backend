@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Deployment
+*.log
