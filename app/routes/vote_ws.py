@@ -1,5 +1,6 @@
 import os
 import asyncio
+import json
 import redis.asyncio as redis
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
@@ -94,7 +95,7 @@ async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session
             async for message in pubsub.listen():
                 if message is None or message["type"] != "message":
                     continue
-                data = eval(message["data"])  # Because we sent str(payload)
+                data = json.loads(message["data"])
                 await websocket.send_json({"poll_id": poll_id, "options": data})
         else:
             # Fallback: keep connection alive (manual broadcast handled locally)
