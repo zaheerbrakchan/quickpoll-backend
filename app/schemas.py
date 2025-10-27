@@ -26,6 +26,7 @@ class UserOut(BaseModel):
 # Token
 class Token(BaseModel):
     access_token: str
+    username:str
     token_type: str = "bearer"
 
 class TokenData(BaseModel):
