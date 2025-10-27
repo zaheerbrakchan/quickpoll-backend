@@ -26,7 +26,7 @@ async def get_redis():
     global redis_client
     if not redis_client:
         try:
-            redis_client = await redis.from_url(
+            redis_client = redis.from_url(
                 REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True
