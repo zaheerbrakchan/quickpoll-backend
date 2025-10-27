@@ -50,22 +50,22 @@ async def broadcast_vote_update(poll_id: str, db: Session):
     payload = []
     for opt in options:
         count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
-        payload.append({"id": opt.id, "text": opt.text, "votes": count})
+        payload.append({"id": str(opt.id), "text": opt.text, "votes": count})
 
     redis_conn = await get_redis()
     if redis_conn:
-        # Publish to Redis channel
-        await redis_conn.publish(f"poll:{poll_id}", str(payload))
+        # ✅ Proper JSON serialization
+        message = json.dumps({"poll_id": str(poll_id), "options": payload})
+        await redis_conn.publish(f"poll:{poll_id}", message)
         print(f"📡 Published update to Redis for poll {poll_id}")
     else:
         # Fallback: send directly to local WebSocket clients
         if poll_id in active_connections:
             for ws in active_connections[poll_id]:
                 try:
-                    await ws.send_json({"poll_id": poll_id, "options": payload})
+                    await ws.send_json({"poll_id": str(poll_id), "options": payload})
                 except Exception as e:
                     print(f"⚠️ Failed to send WS update: {e}")
-
 
 # ---------------------------
 # WebSocket endpoint
