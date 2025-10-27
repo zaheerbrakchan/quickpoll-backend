@@ -16,17 +16,17 @@ router = APIRouter()
 # Config
 # ---------------------------
 REDIS_URL = os.getenv("REDIS_URL")
-redis = None
+redis_client = None
 active_connections = {}  # in-memory fallback
 
 # ---------------------------
 # Redis Connection Helper
 # ---------------------------
 async def get_redis():
-    global redis
-    if not redis:
+    global redis_client
+    if not redis_client:
         try:
-            redis = await redis.from_url(
+            redis_client = await redis.from_url(
                 REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True
@@ -34,8 +34,8 @@ async def get_redis():
             print(f"✅ Connected to Redis: {REDIS_URL}")
         except Exception as e:
             print(f"⚠️ Redis connection failed ({e}), using in-memory fallback")
-            redis = None
-    return redis
+            redis_client = None
+    return redis_client
 
 # ---------------------------
 # Broadcast Vote Update
