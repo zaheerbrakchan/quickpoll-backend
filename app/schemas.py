@@ -42,7 +42,7 @@ class OptionCreate(OptionBase):
 class Option(OptionBase):
     id: UUID
     poll_id: UUID
-
+    votes: int = 0
     class Config:
         orm_mode = True
 
