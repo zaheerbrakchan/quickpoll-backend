@@ -2,7 +2,7 @@
 import os
 import json
 import asyncio
-import aioredis
+import redis
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -26,7 +26,11 @@ async def get_redis():
     global redis
     if not redis:
         try:
-            redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
+            redis = await redis.from_url(
+                REDIS_URL,
+                encoding="utf-8",
+                decode_responses=True
+            )
             print(f"✅ Connected to Redis: {REDIS_URL}")
         except Exception as e:
             print(f"⚠️ Redis connection failed ({e}), using in-memory fallback")
