@@ -11,6 +11,11 @@ from typing import Optional
 # User
 class UserCreate(BaseModel):
     username: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
     password: str
 
 class UserOut(BaseModel):
