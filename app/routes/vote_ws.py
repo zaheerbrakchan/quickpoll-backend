@@ -28,7 +28,7 @@ async def broadcast_vote_update(poll_id: str, db: Session):
                 pass  # ignore broken sockets
 
 
-@router.websocket("/api/ws/polls/{poll_id}")
+@router.websocket("/ws/polls/{poll_id}")
 async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session = Depends(get_db)):
     await websocket.accept()
 

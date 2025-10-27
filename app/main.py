@@ -12,7 +12,8 @@ app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(likes.router, prefix="/api/likes", tags=["Likes"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(vote_ws.router, prefix="/api")
+app.include_router(vote_ws.router)
+
 
 # Allow all origins (not recommended for production)
 app.add_middleware(
