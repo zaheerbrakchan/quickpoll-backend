@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import polls, votes, likes, auth
+
+from app.routes import polls, votes, likes, auth, vote_ws
 
 app = FastAPI(title="QuickPoll Backend")
 
@@ -11,6 +12,7 @@ app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(likes.router, prefix="/api/likes", tags=["Likes"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(vote_ws.router, prefix="/api")
 
 # Allow all origins (not recommended for production)
 app.add_middleware(
@@ -25,3 +27,5 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {"message": "QuickPoll API is running 🚀"}
+
+
