@@ -8,5 +8,6 @@ passlib[bcrypt]
 python-jose
 email-validator
 aioredis
+setuptools
 
 
