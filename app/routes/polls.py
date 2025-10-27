@@ -33,19 +33,63 @@ def create_poll(
 
 
 # ---------------------------
-# Get All Polls
+# Get All Polls (with vote counts)
 # ---------------------------
 @router.get("/", response_model=list[schemas.Poll])
 def get_polls(db: Session = Depends(get_db)):
-    return db.query(models.Poll).all()
+    polls = db.query(models.Poll).all()
+    result = []
+
+    for poll in polls:
+        options_data = []
+        for opt in poll.options:
+            vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
+            options_data.append({
+                "id": opt.id,
+                "text": opt.text,
+                "votes": vote_count
+            })
+
+        poll_data = {
+            "id": poll.id,
+            "title": poll.title,
+            "description": poll.description,
+            "options": options_data,
+            "created_at": poll.created_at,
+            "created_by": getattr(poll, "created_by", None)
+        }
+
+        result.append(poll_data)
+
+    return result
 
 
 # ---------------------------
-# Get Single Poll
+# Get Single Poll (with vote counts)
 # ---------------------------
 @router.get("/{poll_id}", response_model=schemas.Poll)
 def get_poll(poll_id: str, db: Session = Depends(get_db)):
     poll = db.query(models.Poll).filter(models.Poll.id == poll_id).first()
     if not poll:
         raise HTTPException(status_code=404, detail="Poll not found")
-    return poll
+
+    options_data = []
+    for opt in poll.options:
+        vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
+        options_data.append({
+            "id": opt.id,
+            "text": opt.text,
+            "votes": vote_count
+        })
+
+    poll_data = {
+        "id": poll.id,
+        "title": poll.title,
+        "description": poll.description,
+        "options": options_data,
+        "created_at": poll.created_at,
+        "created_by": getattr(poll, "created_by", None)
+    }
+
+    return poll_data
+
