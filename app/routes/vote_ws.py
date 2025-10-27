@@ -52,20 +52,21 @@ async def broadcast_vote_update(poll_id: str, db: Session):
         count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
         payload.append({"id": str(opt.id), "text": opt.text, "votes": count})
 
+    message = {"poll_id": str(poll_id), "options": payload}
+
     redis_conn = await get_redis()
     if redis_conn:
-        # ✅ Proper JSON serialization
-        message = json.dumps({"poll_id": str(poll_id), "options": payload})
-        await redis_conn.publish(f"poll:{poll_id}", message)
+        await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
         print(f"📡 Published update to Redis for poll {poll_id}")
     else:
-        # Fallback: send directly to local WebSocket clients
+        # Fallback: send directly to all connected clients
         if poll_id in active_connections:
             for ws in active_connections[poll_id]:
                 try:
-                    await ws.send_json({"poll_id": str(poll_id), "options": payload})
+                    await ws.send_json(message)
                 except Exception as e:
                     print(f"⚠️ Failed to send WS update: {e}")
+
 
 # ---------------------------
 # WebSocket endpoint
@@ -74,6 +75,7 @@ async def broadcast_vote_update(poll_id: str, db: Session):
 async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session = Depends(get_db)):
     await websocket.accept()
     print(f"🔗 WebSocket connected for poll {poll_id}")
+    await broadcast_vote_update(poll_id, db)
 
     # Always add to local list (for fallback use)
     if poll_id not in active_connections:
@@ -96,7 +98,8 @@ async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session
                 if message is None or message["type"] != "message":
                     continue
                 data = json.loads(message["data"])
-                await websocket.send_json({"poll_id": poll_id, "options": data})
+                #await websocket.send_json({"poll_id": poll_id, "options": data})
+                await websocket.send_json(data)
         else:
             # Fallback: keep connection alive (manual broadcast handled locally)
             while True:
