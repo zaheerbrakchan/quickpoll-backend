@@ -31,7 +31,7 @@ def login(form_data: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = auth.create_access_token(
-        data={"user_id": str(user.id), "role": user.role},
+        data={"user_id": str(user.id),"username": user.username, "role": user.role},
         expires_delta=timedelta(hours=1)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token,"username": user.username , "token_type": "bearer"}
