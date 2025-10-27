@@ -20,12 +20,17 @@ async def broadcast_vote_update(poll_id: str, db: Session):
         count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
         payload.append({"id": opt.id, "text": opt.text, "votes": count})
 
+    print(f"📢 Broadcasting to {len(active_connections.get(poll_id, []))} clients for poll {poll_id}")
+    print(f"Payload: {payload}")
+
     if poll_id in active_connections:
         for ws in active_connections[poll_id]:
             try:
                 await ws.send_json({"poll_id": poll_id, "options": payload})
-            except:
-                pass  # ignore broken sockets
+                print(f"✅ Sent update to a client for poll {poll_id}")
+            except Exception as e:
+                print(f"⚠️ Failed to send update: {e}")
+
 
 
 @router.websocket("/ws/polls/{poll_id}")
