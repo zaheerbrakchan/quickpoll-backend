@@ -1,15 +1,14 @@
-# app/routes/polls.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app import models, schemas
-from app.utils.dependencies import get_current_user  # updated import
+from app.utils.dependencies import get_current_user
 
 router = APIRouter()
 
 
 # ---------------------------
-# Create Poll (Admin Only)
+# Create Poll
 # ---------------------------
 @router.post("/", response_model=schemas.Poll)
 def create_poll(
@@ -17,7 +16,6 @@ def create_poll(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-
     db_poll = models.Poll(title=poll.title, description=poll.description)
     db.add(db_poll)
     db.commit()
@@ -29,11 +27,24 @@ def create_poll(
         db.add(db_option)
     db.commit()
     db.refresh(db_poll)
-    return db_poll
+
+    # ✅ Initialize likes = 0 and votes = 0 for frontend consistency
+    poll_data = {
+        "id": db_poll.id,
+        "title": db_poll.title,
+        "description": db_poll.description,
+        "created_at": db_poll.created_at,
+        "likes": 0,
+        "options": [
+            {"id": o.id, "poll_id": o.poll_id, "text": o.text, "votes": 0}
+            for o in db_poll.options
+        ],
+    }
+    return poll_data
 
 
 # ---------------------------
-# Get All Polls (with vote counts)
+# Get All Polls (with votes)
 # ---------------------------
 @router.get("/", response_model=list[schemas.Poll])
 def get_polls(db: Session = Depends(get_db)):
@@ -46,17 +57,18 @@ def get_polls(db: Session = Depends(get_db)):
             vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
             options_data.append({
                 "id": opt.id,
+                "poll_id": opt.poll_id,  # ✅ required
                 "text": opt.text,
-                "votes": vote_count
+                "votes": vote_count,
             })
 
         poll_data = {
             "id": poll.id,
             "title": poll.title,
             "description": poll.description,
-            "options": options_data,
             "created_at": poll.created_at,
-            "created_by": getattr(poll, "created_by", None)
+            "likes": getattr(poll, "likes", 0),  # ✅ default 0
+            "options": options_data,
         }
 
         result.append(poll_data)
@@ -65,7 +77,7 @@ def get_polls(db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# Get Single Poll (with vote counts)
+# Get Single Poll (with votes)
 # ---------------------------
 @router.get("/{poll_id}", response_model=schemas.Poll)
 def get_poll(poll_id: str, db: Session = Depends(get_db)):
@@ -78,18 +90,18 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
         vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
         options_data.append({
             "id": opt.id,
+            "poll_id": opt.poll_id,  # ✅ required
             "text": opt.text,
-            "votes": vote_count
+            "votes": vote_count,
         })
 
     poll_data = {
         "id": poll.id,
         "title": poll.title,
         "description": poll.description,
-        "options": options_data,
         "created_at": poll.created_at,
-        "created_by": getattr(poll, "created_by", None)
+        "likes": getattr(poll, "likes", 0),
+        "options": options_data,
     }
 
     return poll_data
-
