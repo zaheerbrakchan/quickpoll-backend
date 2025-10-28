@@ -22,16 +22,19 @@ def get_database_url():
 
 
 # ---------------------------
-# SQLAlchemy setup
+# SQLAlchemy Engine Setup
 # ---------------------------
 DATABASE_URL = get_database_url()
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,   # ✅ ensures dead connections are detected
-    pool_recycle=1800,    # ✅ refresh connections every 30 mins
-    pool_size=5,          # ✅ maintain 5 persistent connections
-    max_overflow=10,      # ✅ allow up to 10 extra when busy
+    pool_pre_ping=True,       # ✅ auto-reconnects dropped DB connections
+    pool_recycle=1800,        # ✅ refresh every 30 mins to avoid idle drops
+    pool_size=10,             # ✅ base connections
+    max_overflow=20,          # ✅ burst capacity
+    pool_timeout=60,          # ✅ wait 60s before timeout
+    connect_args={"connect_timeout": 10},  # ✅ fail fast on bad DB
+    echo=False,               # change to True for debug logs
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -43,32 +46,40 @@ Base = declarative_base()
 # ---------------------------
 def get_db():
     """
-    Yield a database session for FastAPI routes.
+    Dependency to provide a scoped DB session.
+    Closes automatically after the request ends.
     """
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️ DB rollback due to exception: {e}")
+        raise
     finally:
-        db.close()
+        db.close()  # ✅ always return connection to pool
 
 
 # ---------------------------
-# Keep DB connection alive (optional but recommended for Railway/Supabase)
+# Keep DB alive (for Railway/Supabase)
 # ---------------------------
 def keep_db_alive():
     """
-    Sends a lightweight query every 5 minutes to prevent Railway/Supabase from
-    closing idle SSL connections.
+    Pings the database every 5 minutes to keep Railway connections active.
+    If DB goes down temporarily, retries every 60s.
     """
     while True:
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            time.sleep(300)  # every 5 minutes
+            time.sleep(300)
         except Exception as e:
             print(f"⚠️ DB keep-alive failed: {e}")
             time.sleep(60)
 
 
-# Start keep-alive thread in background
-threading.Thread(target=keep_db_alive, daemon=True).start()
+# ---------------------------
+# Background thread for keep-alive
+# ---------------------------
+thread = threading.Thread(target=keep_db_alive, daemon=True)
+thread.start()
