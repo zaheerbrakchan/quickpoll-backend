@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 from typing import Optional
 
@@ -63,11 +63,12 @@ class PollCreate(PollBase):
 class Poll(PollBase):
     id: UUID
     created_at: datetime
-    likes: int
+    likes: int = Field(..., alias="likes_count")  # ✅ alias maps DB field → response field
     options: List[Option] = []
 
     class Config:
         orm_mode = True
+        allow_population_by_field_name = True  # ✅ allows using either likes or likes_count
 
 
 # Vote
