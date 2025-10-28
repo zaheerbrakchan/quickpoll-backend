@@ -68,13 +68,16 @@ def get_polls(db: Session = Depends(get_db)):
                 "votes": vote_count,
             })
 
+        # ✅ Recalculate likes live from Like table
+        like_count = db.query(models.Like).filter(models.Like.poll_id == poll.id).count()
+
         poll_data = {
             "id": poll.id,
             "title": poll.title,
             "description": poll.description,
             "created_at": poll.created_at,
             "created_by": poll.created_by,
-            "likes_count": poll.likes_count or 0,  # ✅ renamed from likes
+            "likes_count": like_count,
             "options": options_data,
         }
         result.append(poll_data)
@@ -101,13 +104,15 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
             "votes": vote_count,
         })
 
+    like_count = db.query(models.Like).filter(models.Like.poll_id == poll.id).count()
+
     poll_data = {
         "id": poll.id,
         "title": poll.title,
         "description": poll.description,
         "created_at": poll.created_at,
         "created_by": poll.created_by,
-        "likes_count": poll.likes_count or 0,  # ✅ renamed field
+        "likes_count": like_count,
         "options": options_data,
     }
 
