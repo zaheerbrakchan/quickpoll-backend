@@ -8,6 +8,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_database_url():
+    """
+    Automatically choose Railway internal DB if available,
+    otherwise fall back to local .env config.
+    """
+    # 1️⃣ Prefer Railway internal DB connection
+    if os.getenv("RAILWAY_DATABASE_URL"):
+        return os.getenv("RAILWAY_DATABASE_URL")
+
+    # 2️⃣ Otherwise build from .env manually (local dev)
     USER = os.getenv("USER") or os.getenv("user")
     PASSWORD = os.getenv("PASSWORD") or os.getenv("password")
     HOST = os.getenv("HOST") or os.getenv("host")
@@ -15,6 +24,7 @@ def get_database_url():
     DBNAME = os.getenv("DBNAME") or os.getenv("dbname")
 
     return f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
+
 
 DATABASE_URL = get_database_url()
 
