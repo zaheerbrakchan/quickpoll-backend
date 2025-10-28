@@ -69,6 +69,36 @@ async def broadcast_vote_update(poll_id: str, db: Session):
 
 
 # ---------------------------
+# Broadcast like updates
+# ---------------------------
+async def broadcast_like_update(poll_id: str, db: Session):
+    """Send updated like count to all WebSocket clients for this poll."""
+    poll = db.query(models.Poll).filter(models.Poll.id == poll_id).first()
+    if not poll:
+        return
+
+    message = {
+        "type": "like_update",
+        "poll_id": str(poll_id),
+        "likes": poll.likes,
+    }
+
+    redis_conn = await get_redis()
+    if redis_conn:
+        await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
+        print(f"❤️ Published like update to Redis for poll {poll_id}")
+    else:
+        # Fallback: send directly to connected clients
+        if poll_id in active_connections:
+            for ws in active_connections[poll_id]:
+                try:
+                    await ws.send_json(message)
+                except Exception as e:
+                    print(f"⚠️ Failed to send WS like update: {e}")
+
+
+
+# ---------------------------
 # WebSocket endpoint
 # ---------------------------
 @router.websocket("/ws/polls/{poll_id}")
