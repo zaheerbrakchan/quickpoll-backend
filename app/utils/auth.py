@@ -2,10 +2,12 @@
 from passlib.hash import pbkdf2_sha256
 from datetime import datetime, timedelta
 from jose import jwt
+import os
 
 # Secret key for JWT
-SECRET_KEY = "your_super_secret_key_here"  # change this in production
-ALGORITHM = "HS256"
+# 🔐 Read from environment variables, with a fallback
+SECRET_KEY = os.getenv("SECRET_KEY", "your_super_secret_key_here")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 
 # ---------------------------
