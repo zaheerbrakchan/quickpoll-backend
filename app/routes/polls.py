@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -43,7 +45,7 @@ async def create_poll(
         "id": str(db_poll.id),
         "title": db_poll.title,
         "description": db_poll.description,
-        "created_at": db_poll.created_at,
+        "created_at": db_poll.created_at.isoformat() if isinstance(db_poll.created_at, datetime) else str(db_poll.created_at),
         "created_by": db_poll.created_by,
         "likes_count": db_poll.likes_count or 0,
         "options": [
@@ -55,7 +57,7 @@ async def create_poll(
     # Broadcast to global WS channel
     redis_conn = await get_redis()
     if redis_conn:
-        await redis_conn.publish("polls:global", json.dumps(poll_data))
+        await redis_conn.publish("polls:global", json.dumps(poll_data,default=str))
         print("📡 Broadcasted new poll to Redis global channel")
 
     return poll_data
