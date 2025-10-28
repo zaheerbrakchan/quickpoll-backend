@@ -40,14 +40,14 @@ async def create_poll(
 
     # ✅ Return normalized poll data for frontend
     poll_data = {
-        "id": db_poll.id,
+        "id": str(db_poll.id),
         "title": db_poll.title,
         "description": db_poll.description,
         "created_at": db_poll.created_at,
         "created_by": db_poll.created_by,
         "likes_count": db_poll.likes_count or 0,
         "options": [
-            {"id": o.id, "poll_id": o.poll_id, "text": o.text, "votes": 0}
+            {"id": str(o.id), "poll_id": str(o.poll_id), "text": o.text, "votes": 0}
             for o in db_poll.options
         ],
     }
