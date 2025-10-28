@@ -51,3 +51,22 @@ async def cast_vote(
     await broadcast_vote_update(vote.poll_id, db)
 
     return vote
+
+@router.get("/user/{poll_id}")
+def get_user_vote(
+    poll_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    existing_vote = (
+        db.query(models.Vote)
+        .filter(models.Vote.poll_id == poll_id, models.Vote.user_id == current_user.id)
+        .first()
+    )
+    if not existing_vote:
+        return {"voted": False}
+
+    return {
+        "voted": True,
+        "option_id": existing_vote.option_id
+    }
