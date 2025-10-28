@@ -4,11 +4,15 @@ from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db import Base
+from sqlalchemy.sql import func
+from datetime import datetime
 
 
 # ------------------------
 # Users Table
 # ------------------------
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -17,9 +21,14 @@ class User(Base):
     email = Column(Text, unique=True, nullable=False)
     password_hash = Column(Text, nullable=False)
     role = Column(Text, default="user")  # 'user' or 'admin'
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=datetime.utcnow   # 👈 Python fallback for ORM
+    )
 
     votes = relationship("Vote", back_populates="user")
+
     # likes relationship can be added if using a likes table
 
 
