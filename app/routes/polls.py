@@ -71,7 +71,7 @@ def get_polls(db: Session = Depends(get_db)):
             "title": poll.title,
             "description": poll.description,
             "created_at": poll.created_at,
-            "likes": poll.likes_count or 0,  # ✅ renamed from likes
+            "likes_count": poll.likes_count or 0,  # ✅ renamed from likes
             "options": options_data,
         }
         result.append(poll_data)
@@ -103,7 +103,7 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
         "title": poll.title,
         "description": poll.description,
         "created_at": poll.created_at,
-        "likes": poll.likes_count or 0,  # ✅ renamed field
+        "likes_count": poll.likes_count or 0,  # ✅ renamed field
         "options": options_data,
     }
 
