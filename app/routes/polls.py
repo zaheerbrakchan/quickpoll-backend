@@ -16,7 +16,11 @@ def create_poll(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    db_poll = models.Poll(title=poll.title, description=poll.description)
+    db_poll = models.Poll(
+        title=poll.title,
+        description=poll.description,
+        likes_count=0,  # ✅ default for new poll
+    )
     db.add(db_poll)
     db.commit()
     db.refresh(db_poll)
@@ -28,13 +32,13 @@ def create_poll(
     db.commit()
     db.refresh(db_poll)
 
-    # ✅ Initialize likes = 0 and votes = 0 for frontend consistency
+    # ✅ Return normalized poll data for frontend
     poll_data = {
         "id": db_poll.id,
         "title": db_poll.title,
         "description": db_poll.description,
         "created_at": db_poll.created_at,
-        "likes": 0,
+        "likes": db_poll.likes_count or 0,
         "options": [
             {"id": o.id, "poll_id": o.poll_id, "text": o.text, "votes": 0}
             for o in db_poll.options
@@ -57,7 +61,7 @@ def get_polls(db: Session = Depends(get_db)):
             vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
             options_data.append({
                 "id": opt.id,
-                "poll_id": opt.poll_id,  # ✅ required
+                "poll_id": opt.poll_id,
                 "text": opt.text,
                 "votes": vote_count,
             })
@@ -67,10 +71,9 @@ def get_polls(db: Session = Depends(get_db)):
             "title": poll.title,
             "description": poll.description,
             "created_at": poll.created_at,
-            "likes": getattr(poll, "likes", 0),  # ✅ default 0
+            "likes": poll.likes_count or 0,  # ✅ renamed from likes
             "options": options_data,
         }
-
         result.append(poll_data)
 
     return result
@@ -90,7 +93,7 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
         vote_count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
         options_data.append({
             "id": opt.id,
-            "poll_id": opt.poll_id,  # ✅ required
+            "poll_id": opt.poll_id,
             "text": opt.text,
             "votes": vote_count,
         })
@@ -100,7 +103,7 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
         "title": poll.title,
         "description": poll.description,
         "created_at": poll.created_at,
-        "likes": getattr(poll, "likes", 0),
+        "likes": poll.likes_count or 0,  # ✅ renamed field
         "options": options_data,
     }
 

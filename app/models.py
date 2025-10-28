@@ -1,18 +1,15 @@
 # app/models.py
 import uuid
+from datetime import datetime
 from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db import Base
-from sqlalchemy.sql import func
-from datetime import datetime
 
 
 # ------------------------
 # Users Table
 # ------------------------
-
-
 class User(Base):
     __tablename__ = "users"
 
@@ -20,16 +17,15 @@ class User(Base):
     username = Column(Text, unique=True, nullable=False)
     email = Column(Text, unique=True, nullable=False)
     password_hash = Column(Text, nullable=False)
-    role = Column(Text, default="user")  # 'user' or 'admin'
+    role = Column(Text, default="user")
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
-        default=datetime.utcnow   # 👈 Python fallback for ORM
+        default=datetime.utcnow
     )
 
     votes = relationship("Vote", back_populates="user")
-
-    # likes relationship can be added if using a likes table
+    likes = relationship("Like", back_populates="user")  # ✅ added this
 
 
 # ------------------------
@@ -42,10 +38,12 @@ class Poll(Base):
     title = Column(Text, nullable=False)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    likes = Column(Integer, default=0)
+
+    likes_count = Column(Integer, default=0)  # ✅ renamed to avoid conflict
 
     options = relationship("Option", back_populates="poll", cascade="all, delete")
     votes = relationship("Vote", back_populates="poll", cascade="all, delete")
+    likes = relationship("Like", back_populates="poll", cascade="all, delete")  # ✅ fixed
 
 
 # ------------------------
@@ -71,7 +69,7 @@ class Vote(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     poll_id = Column(UUID(as_uuid=True), ForeignKey("polls.id", ondelete="CASCADE"))
     option_id = Column(UUID(as_uuid=True), ForeignKey("options.id", ondelete="CASCADE"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))  # updated
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     poll = relationship("Poll", back_populates="votes")
@@ -84,11 +82,11 @@ class Vote(Base):
 # ------------------------
 class Like(Base):
     __tablename__ = "likes"
-    id = Column(String, primary_key=True, index=True)
-    poll_id = Column(String, ForeignKey("polls.id"), nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    poll_id = Column(UUID(as_uuid=True), ForeignKey("polls.id", ondelete="CASCADE"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    poll = relationship("Poll", back_populates="likes_rel")
-    user = relationship("User")
-
+    poll = relationship("Poll", back_populates="likes")  # ✅ must match Poll.likes
+    user = relationship("User", back_populates="likes")
