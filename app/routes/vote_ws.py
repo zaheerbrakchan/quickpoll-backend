@@ -80,7 +80,7 @@ async def broadcast_like_update(poll_id: str, db: Session):
     message = {
         "type": "like_update",
         "poll_id": str(poll_id),
-        "likes": poll.likes,
+        "likes": poll.likes_count or 0,
     }
 
     redis_conn = await get_redis()
@@ -106,6 +106,7 @@ async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session
     await websocket.accept()
     print(f"🔗 WebSocket connected for poll {poll_id}")
     await broadcast_vote_update(poll_id, db)
+    await broadcast_like_update(poll_id, db)
 
     # Always add to local list (for fallback use)
     if poll_id not in active_connections:
