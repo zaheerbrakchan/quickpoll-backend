@@ -77,3 +77,18 @@ class Vote(Base):
     poll = relationship("Poll", back_populates="votes")
     option = relationship("Option", back_populates="votes")
     user = relationship("User", back_populates="votes")
+
+
+# ------------------------
+# Likes Table
+# ------------------------
+class Like(Base):
+    __tablename__ = "likes"
+    id = Column(String, primary_key=True, index=True)
+    poll_id = Column(String, ForeignKey("polls.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    poll = relationship("Poll", back_populates="likes_rel")
+    user = relationship("User")
+
