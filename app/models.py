@@ -39,11 +39,11 @@ class Poll(Base):
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    likes_count = Column(Integer, default=0)  # ✅ renamed to avoid conflict
+    likes = Column(Integer, default=0)  # ✅ renamed to avoid conflict
 
     options = relationship("Option", back_populates="poll", cascade="all, delete")
     votes = relationship("Vote", back_populates="poll", cascade="all, delete")
-    likes = relationship("Like", back_populates="poll", cascade="all, delete")  # ✅ fixed
+
 
 
 # ------------------------
