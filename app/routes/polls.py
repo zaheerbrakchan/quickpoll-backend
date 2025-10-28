@@ -38,7 +38,7 @@ def create_poll(
         "title": db_poll.title,
         "description": db_poll.description,
         "created_at": db_poll.created_at,
-        "likes": db_poll.likes_count or 0,
+        "likes_count": db_poll.likes_count or 0,
         "options": [
             {"id": o.id, "poll_id": o.poll_id, "text": o.text, "votes": 0}
             for o in db_poll.options
