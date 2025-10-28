@@ -4,6 +4,11 @@ from app.db import get_db
 from app import models, schemas
 from app.utils.dependencies import get_current_user
 
+import asyncio
+import json
+
+from app.routes.polls_ws import get_redis
+
 router = APIRouter()
 
 
@@ -11,7 +16,7 @@ router = APIRouter()
 # Create Poll
 # ---------------------------
 @router.post("/", response_model=schemas.Poll)
-def create_poll(
+async def create_poll(
     poll: schemas.PollCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -46,6 +51,13 @@ def create_poll(
             for o in db_poll.options
         ],
     }
+
+    # Broadcast to global WS channel
+    redis_conn = await get_redis()
+    if redis_conn:
+        await redis_conn.publish("polls:global", json.dumps(poll_data))
+        print("📡 Broadcasted new poll to Redis global channel")
+
     return poll_data
 
 

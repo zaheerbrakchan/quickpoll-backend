@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from app.routes import polls, votes, likes, auth, vote_ws
+from app.routes import polls, votes, likes, auth, polls_ws
 
 app = FastAPI(title="QuickPoll Backend")
 
