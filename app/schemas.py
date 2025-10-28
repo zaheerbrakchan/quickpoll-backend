@@ -63,6 +63,7 @@ class PollCreate(PollBase):
 class Poll(PollBase):
     id: UUID
     created_at: datetime
+    created_by: str
     likes: int = Field(..., alias="likes_count")  # ✅ alias maps DB field → response field
     options: List[Option] = []
 

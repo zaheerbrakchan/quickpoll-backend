@@ -20,6 +20,7 @@ def create_poll(
         title=poll.title,
         description=poll.description,
         likes_count=0,  # ✅ default for new poll
+        created_by=current_user.username,
     )
     db.add(db_poll)
     db.commit()
@@ -38,6 +39,7 @@ def create_poll(
         "title": db_poll.title,
         "description": db_poll.description,
         "created_at": db_poll.created_at,
+        "created_by": db_poll.created_by,
         "likes_count": db_poll.likes_count or 0,
         "options": [
             {"id": o.id, "poll_id": o.poll_id, "text": o.text, "votes": 0}
@@ -71,6 +73,7 @@ def get_polls(db: Session = Depends(get_db)):
             "title": poll.title,
             "description": poll.description,
             "created_at": poll.created_at,
+            "created_by": poll.created_by,
             "likes_count": poll.likes_count or 0,  # ✅ renamed from likes
             "options": options_data,
         }
@@ -103,6 +106,7 @@ def get_poll(poll_id: str, db: Session = Depends(get_db)):
         "title": poll.title,
         "description": poll.description,
         "created_at": poll.created_at,
+        "created_by": poll.created_by,
         "likes_count": poll.likes_count or 0,  # ✅ renamed field
         "options": options_data,
     }
