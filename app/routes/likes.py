@@ -5,7 +5,7 @@ from uuid import uuid4
 from app.db import get_db
 from app import models
 from app.utils.dependencies import get_current_user
-from app.routes.vote_ws import broadcast_like_update
+from app.routes.polls_ws import broadcast_like_update
 
 router = APIRouter(tags=["Likes"])
 

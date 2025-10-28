@@ -99,6 +99,42 @@ async def broadcast_like_update(poll_id: str, db: Session):
 
 
 # ---------------------------
+# Global WebSocket endpoint
+# ---------------------------
+
+@router.websocket("/ws/polls")
+async def websocket_all_polls(websocket: WebSocket):
+    """WebSocket for receiving updates about newly created polls globally."""
+    await websocket.accept()
+    print("🌍 Global Poll WebSocket connected")
+
+    redis_conn = await get_redis()
+    pubsub = None
+
+    if redis_conn:
+        pubsub = redis_conn.pubsub()
+        await pubsub.subscribe("polls:global")
+        print("✅ Subscribed to Redis channel polls:global")
+
+    try:
+        if pubsub:
+            async for message in pubsub.listen():
+                if message is None or message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                await websocket.send_json(data)
+        else:
+            # Fallback: just keep connection alive (we could add in-memory broadcast here too)
+            while True:
+                await asyncio.sleep(15)
+    except WebSocketDisconnect:
+        print("❌ Global Poll WebSocket disconnected")
+        if pubsub:
+            await pubsub.unsubscribe("polls:global")
+            await pubsub.close()
+
+
+# ---------------------------
 # WebSocket endpoint
 # ---------------------------
 @router.websocket("/ws/polls/{poll_id}")

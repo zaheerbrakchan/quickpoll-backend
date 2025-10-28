@@ -11,7 +11,7 @@ router = APIRouter()
 # ---------------------------
 # Cast Vote
 # ---------------------------
-from app.routes.vote_ws import broadcast_vote_update
+from app.routes.polls_ws import broadcast_vote_update
 
 
 @router.post("/", response_model=schemas.VoteCreate)
