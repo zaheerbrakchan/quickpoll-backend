@@ -48,7 +48,7 @@ async def cast_vote(
     db.refresh(db_vote)
 
     # ✅ Broadcast update
-    await broadcast_vote_update(vote.poll_id, db)
+    await broadcast_vote_update(vote.poll_id)
 
     return vote
 

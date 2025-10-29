@@ -42,6 +42,7 @@ async def create_poll(
 
     # ✅ Return normalized poll data for frontend
     poll_data = {
+        "type": "new_poll",
         "id": str(db_poll.id),
         "title": db_poll.title,
         "description": db_poll.description,

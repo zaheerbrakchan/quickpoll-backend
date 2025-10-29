@@ -2,32 +2,27 @@ import os
 import asyncio
 import json
 import redis.asyncio as redis
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from sqlalchemy.orm import Session
-from app.db import get_db
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from app.db import SessionLocal, get_db
 from app import models
 
 router = APIRouter()
 
-# ---------------------------
-# Redis setup
-# ---------------------------
 REDIS_URL = os.getenv("REDIS_URL")
 redis_client = None
 active_connections = {}  # in-memory fallback
 
 
+# ---------------------------
+# Redis setup
+# ---------------------------
 async def get_redis():
-    """Return a global async Redis connection, or None if unavailable."""
     global redis_client
     if redis_client is None:
         try:
             redis_client = redis.from_url(
-                REDIS_URL,
-                encoding="utf-8",
-                decode_responses=True
+                REDIS_URL, encoding="utf-8", decode_responses=True
             )
-            # Test connection
             await redis_client.ping()
             print(f"✅ Connected to Redis: {REDIS_URL}")
         except Exception as e:
@@ -39,72 +34,75 @@ async def get_redis():
 # ---------------------------
 # Broadcast vote updates
 # ---------------------------
-async def broadcast_vote_update(poll_id: str, db: Session):
+async def broadcast_vote_update(poll_id: str):
     """Send updated vote counts to all WebSocket clients."""
-    options = (
-        db.query(models.Option.id, models.Option.text)
-        .filter(models.Option.poll_id == poll_id)
-        .all()
-    )
+    db = SessionLocal()
+    try:
+        options = (
+            db.query(models.Option.id, models.Option.text)
+            .filter(models.Option.poll_id == poll_id)
+            .all()
+        )
 
-    payload = []
-    for opt in options:
-        count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
-        payload.append({"id": str(opt.id), "text": opt.text, "votes": count})
+        payload = []
+        for opt in options:
+            count = db.query(models.Vote).filter(models.Vote.option_id == opt.id).count()
+            payload.append({"id": str(opt.id), "text": opt.text, "votes": count})
 
-    message = {"poll_id": str(poll_id), "options": payload}
+        message = {"poll_id": str(poll_id), "options": payload}
 
-    redis_conn = await get_redis()
-    if redis_conn:
-        await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
-        print(f"📡 Published update to Redis for poll {poll_id}")
-    else:
-        # Fallback: send directly to all connected clients
-        if poll_id in active_connections:
-            for ws in active_connections[poll_id]:
-                try:
-                    await ws.send_json(message)
-                except Exception as e:
-                    print(f"⚠️ Failed to send WS update: {e}")
+        redis_conn = await get_redis()
+        if redis_conn:
+            await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
+            print(f"📡 Published update to Redis for poll {poll_id}")
+        else:
+            if poll_id in active_connections:
+                for ws in active_connections[poll_id]:
+                    try:
+                        await ws.send_json(message)
+                    except Exception as e:
+                        print(f"⚠️ Failed to send WS update: {e}")
+    finally:
+        db.close()  # ✅ ensure session released
 
 
 # ---------------------------
 # Broadcast like updates
 # ---------------------------
-async def broadcast_like_update(poll_id: str, db: Session):
+async def broadcast_like_update(poll_id: str):
     """Send updated like count to all WebSocket clients for this poll."""
-    poll = db.query(models.Poll).filter(models.Poll.id == poll_id).first()
-    if not poll:
-        return
+    db = SessionLocal()
+    try:
+        poll = db.query(models.Poll).filter(models.Poll.id == poll_id).first()
+        if not poll:
+            return
 
-    message = {
-        "type": "like_update",
-        "poll_id": str(poll_id),
-        "likes": poll.likes_count or 0,
-    }
+        message = {
+            "type": "like_update",
+            "poll_id": str(poll_id),
+            "likes": poll.likes_count or 0,
+        }
 
-    redis_conn = await get_redis()
-    if redis_conn:
-        await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
-        print(f"❤️ Published like update to Redis for poll {poll_id}")
-    else:
-        # Fallback: send directly to connected clients
-        if poll_id in active_connections:
-            for ws in active_connections[poll_id]:
-                try:
-                    await ws.send_json(message)
-                except Exception as e:
-                    print(f"⚠️ Failed to send WS like update: {e}")
-
+        redis_conn = await get_redis()
+        if redis_conn:
+            await redis_conn.publish(f"poll:{poll_id}", json.dumps(message))
+            print(f"❤️ Published like update to Redis for poll {poll_id}")
+        else:
+            if poll_id in active_connections:
+                for ws in active_connections[poll_id]:
+                    try:
+                        await ws.send_json(message)
+                    except Exception as e:
+                        print(f"⚠️ Failed to send WS like update: {e}")
+    finally:
+        db.close()  # ✅ ensure session released
 
 
 # ---------------------------
-# Global WebSocket endpoint
+# Global WebSocket endpoint (new poll broadcast)
 # ---------------------------
-
 @router.websocket("/ws/polls")
 async def websocket_all_polls(websocket: WebSocket):
-    """WebSocket for receiving updates about newly created polls globally."""
     await websocket.accept()
     print("🌍 Global Poll WebSocket connected")
 
@@ -119,12 +117,10 @@ async def websocket_all_polls(websocket: WebSocket):
     try:
         if pubsub:
             async for message in pubsub.listen():
-                if message is None or message["type"] != "message":
-                    continue
-                data = json.loads(message["data"])
-                await websocket.send_json(data)
+                if message and message["type"] == "message":
+                    data = json.loads(message["data"])
+                    await websocket.send_json(data)
         else:
-            # Fallback: just keep connection alive (we could add in-memory broadcast here too)
             while True:
                 await asyncio.sleep(15)
     except WebSocketDisconnect:
@@ -135,24 +131,24 @@ async def websocket_all_polls(websocket: WebSocket):
 
 
 # ---------------------------
-# WebSocket endpoint
+# Per-poll WebSocket endpoint
 # ---------------------------
 @router.websocket("/ws/polls/{poll_id}")
-async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session = Depends(get_db)):
+async def websocket_poll_updates(websocket: WebSocket, poll_id: str):
     await websocket.accept()
     print(f"🔗 WebSocket connected for poll {poll_id}")
-    await broadcast_vote_update(poll_id, db)
-    await broadcast_like_update(poll_id, db)
 
-    # Always add to local list (for fallback use)
+    # Immediately send latest state
+    await broadcast_vote_update(poll_id)
+    await broadcast_like_update(poll_id)
+
     if poll_id not in active_connections:
         active_connections[poll_id] = []
     active_connections[poll_id].append(websocket)
 
     redis_conn = await get_redis()
-
-    # If Redis available, subscribe to channel
     pubsub = None
+
     if redis_conn:
         pubsub = redis_conn.pubsub()
         await pubsub.subscribe(f"poll:{poll_id}")
@@ -160,15 +156,10 @@ async def websocket_poll_updates(websocket: WebSocket, poll_id: str, db: Session
 
     try:
         if pubsub:
-            # Listen for Redis messages
             async for message in pubsub.listen():
-                if message is None or message["type"] != "message":
-                    continue
-                data = json.loads(message["data"])
-                #await websocket.send_json({"poll_id": poll_id, "options": data})
-                await websocket.send_json(data)
+                if message and message["type"] == "message":
+                    await websocket.send_json(json.loads(message["data"]))
         else:
-            # Fallback: keep connection alive (manual broadcast handled locally)
             while True:
                 await asyncio.sleep(15)
     except WebSocketDisconnect:
