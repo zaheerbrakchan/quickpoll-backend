@@ -40,7 +40,7 @@ async def toggle_like(
     db.refresh(poll)
 
     try:
-        await broadcast_like_update(poll_id, db)
+        await broadcast_like_update(poll_id)
     except Exception as e:
         print(f"WS broadcast error: {e}")
 
