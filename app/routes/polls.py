@@ -65,6 +65,46 @@ async def create_poll(
 
 
 # ---------------------------
+# Delete Poll
+# ---------------------------
+@router.delete("/{poll_id}")
+async def delete_poll(
+    poll_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 🔍 1️⃣ Find the poll
+    db_poll = db.query(models.Poll).filter(models.Poll.id == poll_id).first()
+    if not db_poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+
+    # 🔐 2️⃣ Verify ownership
+    if db_poll.created_by != current_user.username:
+        raise HTTPException(status_code=403, detail="You are not allowed to delete this poll")
+
+    # 🧹 3️⃣ Delete related options first (due to FK constraints)
+    db.query(models.Option).filter(models.Option.poll_id == poll_id).delete()
+
+    # 4️⃣ Delete the poll itself
+    db.delete(db_poll)
+    db.commit()
+
+    # 📡 5️⃣ Broadcast the deletion to all connected clients
+    poll_data = {
+        "type": "poll_deleted",
+        "poll_id": str(poll_id),
+    }
+
+    redis_conn = await get_redis()
+    if redis_conn:
+        await redis_conn.publish("polls:global", json.dumps(poll_data, default=str))
+        print(f"📡 Broadcasted poll_deleted for Poll ID {poll_id}")
+
+    return {"message": "Poll deleted successfully", "poll_id": poll_id}
+
+
+
+# ---------------------------
 # Get All Polls (with votes)
 # ---------------------------
 @router.get("/", response_model=list[schemas.Poll])
