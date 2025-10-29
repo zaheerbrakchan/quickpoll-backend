@@ -69,7 +69,7 @@ async def create_poll(
 # ---------------------------
 @router.delete("/{poll_id}")
 async def delete_poll(
-    poll_id: int,
+    poll_id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
